@@ -1,0 +1,40 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Pricing | PDF Editor">
+  <div class="py-24 bg-slate-50 flex-1">
+    <div class="container mx-auto px-4 max-w-5xl">
+      <div class="text-center mb-16">
+        <h1 class="text-4xl font-bold tracking-tight mb-4">Simple, transparent pricing</h1>
+        <p class="text-xl text-slate-600">Start for free, upgrade when you need more power.</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm">
+          <h2 class="text-2xl font-bold mb-2">Free</h2>
+          <p class="text-slate-500 mb-6">Perfect for occasional use</p>
+          <div class="text-4xl font-bold mb-8">$0<span class="text-lg text-slate-500 font-normal">/mo</span></div>
+          <ul class="space-y-4 mb-8">
+            <li class="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><polyline points="20 6 9 17 4 12"/></svg> Basic PDF editing</li>
+            <li class="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><polyline points="20 6 9 17 4 12"/></svg> Add text and shapes</li>
+            <li class="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500"><polyline points="20 6 9 17 4 12"/></svg> Up to 50 pages per document</li>
+            <li class="flex items-center gap-3 text-slate-400"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg> OCR text recognition</li>
+          </ul>
+          <a href="/editor" class="block w-full text-center rounded-md border border-slate-200 bg-white px-4 py-2 font-medium text-slate-900 hover:bg-slate-50 transition-colors">Get Started</a>
+        </div>
+        <div class="bg-brand-600 rounded-2xl p-8 border border-brand-500 shadow-md text-white relative">
+          <div class="absolute top-0 right-8 -translate-y-1/2 bg-brand-200 text-brand-800 text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full">Most Popular</div>
+          <h2 class="text-2xl font-bold mb-2">Pro</h2>
+          <p class="text-brand-100 mb-6">For professionals and teams</p>
+          <div class="text-4xl font-bold mb-8">$12<span class="text-lg text-brand-200 font-normal">/mo</span></div>
+          <ul class="space-y-4 mb-8 text-brand-50">
+            <li class="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-brand-200"><polyline points="20 6 9 17 4 12"/></svg> Everything in Free</li>
+            <li class="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-brand-200"><polyline points="20 6 9 17 4 12"/></svg> Unlimited pages and file size</li>
+            <li class="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-brand-200"><polyline points="20 6 9 17 4 12"/></svg> Advanced OCR text recognition</li>
+            <li class="flex items-center gap-3"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-brand-200"><polyline points="20 6 9 17 4 12"/></svg> Batch processing</li>
+          </ul>
+          <a href="/editor" class="block w-full text-center rounded-md bg-white px-4 py-2 font-medium text-brand-600 hover:bg-brand-50 transition-colors">Upgrade to Pro</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

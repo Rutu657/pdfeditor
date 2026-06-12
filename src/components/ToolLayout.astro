@@ -1,0 +1,98 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+interface Props {
+  title: string;
+  headline: string;
+  description: string;
+  icon: string;
+  buttonText: string;
+}
+
+const { title, headline, description, icon, buttonText } = Astro.props;
+---
+
+<Layout title={title}>
+  <div class="bg-slate-50 py-16 flex-1 flex flex-col items-center justify-center">
+    <div class="container mx-auto px-4 max-w-2xl text-center">
+      <div class="h-20 w-20 bg-brand-100 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-sm">
+        <Fragment set:html={icon} />
+      </div>
+      <h1 class="text-4xl font-bold tracking-tight text-slate-900 mb-4">{headline}</h1>
+      <p class="text-lg text-slate-600 mb-12">{description}</p>
+      
+      <div id="tool-upload-container" class="bg-white rounded-2xl border-2 border-dashed border-brand-200 p-16 transition-all hover:border-brand-500 shadow-sm relative group cursor-pointer">
+        <input type="file" id="tool-pdf-input" accept=".pdf" class="hidden" />
+        <div class="absolute inset-0 bg-brand-50/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl pointer-events-none"></div>
+        <div class="relative z-10 flex flex-col items-center pointer-events-none">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 mb-6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+          <button id="tool-select-btn" type="button" class="inline-flex h-12 items-center justify-center rounded-md bg-brand-600 px-8 font-medium text-white shadow transition-all hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 pointer-events-auto">
+            {buttonText}
+          </button>
+          <p class="text-sm text-slate-500 mt-4">or drop PDFs here</p>
+        </div>
+      </div>
+
+<script>
+  import { storePdf } from '../utils/db.js';
+
+  const uploadContainer = document.getElementById('tool-upload-container');
+  const fileInput = document.getElementById('tool-pdf-input') as HTMLInputElement;
+  const selectBtn = document.getElementById('tool-select-btn');
+
+  if (uploadContainer && fileInput && selectBtn) {
+    const triggerInput = (e: Event) => {
+      e.stopPropagation();
+      fileInput.click();
+    };
+
+    uploadContainer.addEventListener('click', triggerInput);
+    selectBtn.addEventListener('click', triggerInput);
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files?.[0];
+      if (file && file.type === 'application/pdf') {
+        try {
+          await storePdf(file);
+          window.location.href = '/editor';
+        } catch (err) {
+          console.error('Failed to store PDF:', err);
+          alert('Failed to process PDF file. Please try again.');
+        }
+      } else if (file) {
+        alert('Please select a valid PDF file.');
+      }
+    });
+
+    // Drag and drop handlers
+    uploadContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadContainer.classList.add('border-brand-500', 'bg-brand-50/50');
+    });
+
+    uploadContainer.addEventListener('dragleave', () => {
+      uploadContainer.classList.remove('border-brand-500', 'bg-brand-50/50');
+    });
+
+    uploadContainer.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      uploadContainer.classList.remove('border-brand-500', 'bg-brand-50/50');
+      
+      const file = e.dataTransfer?.files?.[0];
+      if (file && file.type === 'application/pdf') {
+        try {
+          await storePdf(file);
+          window.location.href = '/editor';
+        } catch (err) {
+          console.error('Failed to store PDF:', err);
+          alert('Failed to process PDF file. Please try again.');
+        }
+      } else if (file) {
+        alert('Only PDF files are supported.');
+      }
+    });
+  }
+</script>
+    </div>
+  </div>
+</Layout>
