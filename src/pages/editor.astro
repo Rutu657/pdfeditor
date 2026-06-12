@@ -31,7 +31,7 @@ import Layout from '../layouts/Layout.astro';
       background: transparent !important;
       border: 1px solid transparent !important;
       box-shadow: none !important;
-      overflow: hidden !important;
+      overflow: visible !important;
       padding: 0 !important;
       margin: 0 !important;
       box-sizing: border-box !important;
@@ -51,8 +51,8 @@ import Layout from '../layouts/Layout.astro';
       width: 100%;
       height: 100%;
       box-sizing: border-box !important;
-      white-space: pre-wrap !important; /* Allow wrapping while preserving spaces */
-      word-break: break-word !important;
+      white-space: pre !important; /* No wrapping - matches original single-line PDF layout */
+      word-break: normal !important;
       overflow: visible !important;
       caret-color: currentColor !important;
     }
@@ -96,6 +96,11 @@ import Layout from '../layouts/Layout.astro';
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
           <span class="text-xs font-medium hidden sm:inline">Highlight</span>
         </button>
+        <button id="btn-image" class="p-2 hover:bg-slate-100 rounded text-slate-600 flex items-center gap-1 transition-all" title="Add Image">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+          <span class="text-xs font-medium hidden sm:inline">Add Image</span>
+        </button>
+        <input type="file" id="image-file-input" accept="image/png,image/jpeg" class="hidden" />
         
         <!-- Context-sensitive Text Formatting Toolbar -->
         <div id="text-formatting-toolbar" class="hidden flex items-center gap-1.5 border-l border-slate-200 pl-3 ml-2">
@@ -297,7 +302,7 @@ import Layout from '../layouts/Layout.astro';
   let pdfBytes: ArrayBuffer | null = null;
   let pdfDoc: any = null;
   let zoomFactor = 1.0;
-  let activeTool: 'text' | 'signature' | 'highlight' | null = null;
+  let activeTool: 'text' | 'signature' | 'highlight' | 'image' | null = null;
   let pagesRendered: Array<{
     page: any;
     canvas: HTMLCanvasElement;
@@ -313,6 +318,7 @@ import Layout from '../layouts/Layout.astro';
   
   let savedSignatureDataUrl: string | null = null;
   let signatureClickPosition: { xPct: number; yPct: number; pageNum: number } | null = null;
+  let pendingImageDataUrl: string | null = null;
 
   // DOM Elements
   const uploadCard = document.getElementById('editor-upload-card');
@@ -324,6 +330,8 @@ import Layout from '../layouts/Layout.astro';
   const btnAddText = document.getElementById('btn-add-text');
   const btnSign = document.getElementById('btn-sign');
   const btnHighlight = document.getElementById('btn-highlight');
+  const btnImage = document.getElementById('btn-image');
+  const imageFileInput = document.getElementById('image-file-input') as HTMLInputElement;
 
   const btnZoomIn = document.getElementById('btn-zoom-in');
   const btnZoomOut = document.getElementById('btn-zoom-out');
@@ -521,6 +529,26 @@ import Layout from '../layouts/Layout.astro';
       toggleTool('highlight');
     });
 
+    btnImage?.addEventListener('click', () => {
+      if (activeTool === 'image') {
+        toggleTool('image');
+        return;
+      }
+      imageFileInput?.click();
+    });
+
+    imageFileInput?.addEventListener('change', () => {
+      const file = imageFileInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingImageDataUrl = reader.result as string;
+        if (activeTool !== 'image') toggleTool('image');
+      };
+      reader.readAsDataURL(file);
+      imageFileInput.value = '';
+    });
+
     // Properties / Toolbar edits sync
     const applyFontFamily = (val: string) => {
       if (selectedBoxId) {
@@ -682,7 +710,7 @@ import Layout from '../layouts/Layout.astro';
     });
   }
 
-  function toggleTool(tool: 'text' | 'signature' | 'highlight') {
+  function toggleTool(tool: 'text' | 'signature' | 'highlight' | 'image') {
     if (activeTool === tool) {
       activeTool = null;
     } else {
@@ -692,7 +720,8 @@ import Layout from '../layouts/Layout.astro';
     const tools = [
       { id: 'btn-add-text', name: 'text' },
       { id: 'btn-sign', name: 'signature' },
-      { id: 'btn-highlight', name: 'highlight' }
+      { id: 'btn-highlight', name: 'highlight' },
+      { id: 'btn-image', name: 'image' }
     ];
 
     tools.forEach(t => {
@@ -717,6 +746,8 @@ import Layout from '../layouts/Layout.astro';
         ov.style.cursor = 'pointer';
       } else if (activeTool === 'highlight') {
         ov.style.cursor = 'crosshair';
+      } else if (activeTool === 'image') {
+        ov.style.cursor = 'copy';
       } else {
         ov.style.cursor = 'default';
       }
@@ -1010,7 +1041,16 @@ import Layout from '../layouts/Layout.astro';
       const text = span.textContent?.trim() || '';
       if (!text) return;
       
-      const hasMatch = pageMaskEdits.some(edit => edit.originalText === text);
+      // Match by BOTH text and position so duplicate text elsewhere on the page is not hidden
+      const layerRect = textLayer.getBoundingClientRect();
+      const rect = span.getBoundingClientRect();
+      const spanXPct = layerRect.width ? ((rect.left - layerRect.left) / layerRect.width) * 100 : 0;
+      const spanYPct = layerRect.height ? ((rect.top - layerRect.top) / layerRect.height) * 100 : 0;
+      const hasMatch = pageMaskEdits.some(edit =>
+        edit.originalText === text &&
+        Math.abs(edit.xPct - spanXPct) < 1.5 &&
+        Math.abs(edit.yPct - spanYPct) < 1.5
+      );
       if (hasMatch) {
         span.style.opacity = '0';
         span.style.pointerEvents = 'none';
@@ -1089,6 +1129,11 @@ import Layout from '../layouts/Layout.astro';
         } else {
           openSignatureDialog();
         }
+      } else if (activeTool === 'image') {
+        if (pendingImageDataUrl) {
+          placeImage(overlay, xPct, yPct, pendingImageDataUrl);
+        }
+        toggleTool('image');
       }
     });
 
@@ -1166,11 +1211,8 @@ import Layout from '../layouts/Layout.astro';
     let wPct = (spanRect.width / overlayRect.width) * 100;
     let hPct = (spanRect.height / overlayRect.height) * 100;
     
-    // Ensure minimum dimensions for usability
-    const minWPct = (60 / overlayRect.width) * 100;
-    const minHPct = (24 / overlayRect.height) * 100;
-    if (wPct < minWPct) wPct = minWPct;
-    if (hPct < minHPct) hPct = minHPct;
+    // Keep the exact measured span footprint so the edit box matches the original text 1:1.
+    // No artificial minimum size: oversized boxes caused wrong masks and shifted exports.
 
     const originalText = span.textContent?.trim() || '';
 
@@ -1280,14 +1322,12 @@ import Layout from '../layouts/Layout.astro';
 
   function renderTextBoxElement(overlay: HTMLDivElement, edit: TextEdit) {
     const box = document.createElement('div');
-    box.className = 'absolute border border-transparent p-0 m-0 cursor-text select-text flex items-center page-text-box pointer-events-auto';
+    box.className = 'absolute border border-transparent p-0 m-0 cursor-text select-text page-text-box pointer-events-auto';
     
     box.style.left = `${edit.xPct}%`;
     box.style.top = `${edit.yPct}%`;
     box.style.width = `${edit.wPct}%`;
     box.style.height = `${edit.hPct}%`;
-    box.style.minWidth = '60px';
-    box.style.minHeight = '24px';
     
     box.style.fontFamily = edit.fontFamily;
     box.style.fontSize = `${edit.fontSize * zoomFactor}px`; 
@@ -1576,6 +1616,90 @@ import Layout from '../layouts/Layout.astro';
     });
   }
 
+  function placeImage(overlay: HTMLDivElement, leftPct: number, topPct: number, dataUrl: string) {
+    const box = document.createElement('div');
+    box.className = 'absolute border border-transparent hover:border-brand-500 cursor-move group page-image-box pointer-events-auto';
+    box.style.left = `${leftPct}%`;
+    box.style.top = `${topPct}%`;
+    box.style.transform = 'translate(-50%, -50%)';
+    box.style.width = '200px';
+
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.className = 'w-full h-auto pointer-events-none select-none block';
+    box.appendChild(img);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'absolute -top-2 -right-2 hidden group-hover:flex items-center justify-center h-5 w-5 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm cursor-pointer z-10';
+    delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>';
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      box.remove();
+      markUnsaved();
+    });
+    box.appendChild(delBtn);
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'absolute -bottom-1.5 -right-1.5 h-3 w-3 bg-brand-600 border border-white rounded-sm hidden group-hover:block cursor-nwse-resize z-10';
+    box.appendChild(resizeHandle);
+
+    overlay.appendChild(box);
+    markUnsaved();
+
+    let isDragging = false;
+    let isResizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startW = 0;
+
+    const onMove = (e: MouseEvent) => {
+      const overlayRect = overlay.getBoundingClientRect();
+      if (isResizing) {
+        const dw = e.clientX - startX;
+        const newW = Math.max(30, startW + dw);
+        box.style.width = `${newW}px`;
+        markUnsaved();
+        return;
+      }
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      startX = e.clientX;
+      startY = e.clientY;
+      const newLeftPct = ((box.offsetLeft + dx) / overlayRect.width) * 100;
+      const newTopPct = ((box.offsetTop + dy) / overlayRect.height) * 100;
+      box.style.left = `${newLeftPct}%`;
+      box.style.top = `${newTopPct}%`;
+      markUnsaved();
+    };
+
+    const onUp = () => {
+      isDragging = false;
+      isResizing = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    box.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      e.preventDefault();
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      isResizing = true;
+      startX = e.clientX;
+      startW = box.offsetWidth;
+      e.preventDefault();
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
   const customFontsCache: Record<string, any> = {};
 
   async function getEmbeddableFont(doc: any, familyName: string, bold: boolean, italic: boolean) {
@@ -1833,6 +1957,33 @@ if (!text) continue;
             y: pdfY,
             width: pdfW,
             height: pdfH
+          });
+        }
+
+        // Apply Inserted Images
+        const imageElements = overlay.querySelectorAll('.page-image-box');
+        for (const element of imageElements) {
+          const el = element as HTMLDivElement;
+          const imgEl = el.querySelector('img') as HTMLImageElement;
+          if (!imgEl || !imgEl.src) continue;
+
+          const elRect = el.getBoundingClientRect();
+          const leftPx = elRect.left - overlayRect.left;
+          const topPx = elRect.top - overlayRect.top;
+
+          const imgPdfX = leftPx * scaleX;
+          const imgPdfY = pdfHeight - (topPx * scaleY) - (elRect.height * scaleY);
+          const imgPdfW = elRect.width * scaleX;
+          const imgPdfH = elRect.height * scaleY;
+
+          const embeddedImg = imgEl.src.startsWith('data:image/jpeg')
+            ? await doc.embedJpg(imgEl.src)
+            : await doc.embedPng(imgEl.src);
+          page.drawImage(embeddedImg, {
+            x: imgPdfX,
+            y: imgPdfY,
+            width: imgPdfW,
+            height: imgPdfH
           });
         }
 
