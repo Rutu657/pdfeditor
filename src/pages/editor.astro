@@ -1060,13 +1060,11 @@ import Layout from '../layouts/Layout.astro';
         const canvasW = Math.ceil(edit.originalPdfW) + 2;
         const canvasH = Math.ceil(edit.originalPdfH) + 2;
 
-        // Perfection: copy the exact background pixels from the clean snapshot.
-        // This handles gradients, textures, scanned pages, and shadows with zero artifacts.
-        context.drawImage(
-          cleanCanvas,
-          canvasX, canvasY, canvasW, canvasH,  // source rect from clean snapshot
-          canvasX, canvasY, canvasW, canvasH   // dest rect on live canvas
-        );
+        // Paint over the original glyphs with the sampled background color.
+        // NOTE: the clean snapshot still CONTAINS the original text, so copying
+        // it back does nothing - the text must be covered, not restored.
+        context.fillStyle = edit.backgroundColor || '#FFFFFF';
+        context.fillRect(canvasX, canvasY, canvasW, canvasH);
       }
     });
   }
